@@ -1,0 +1,650 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "Microservicio Usuarios - Enterprise",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000"
+		},
+		{
+			"key": "token",
+			"value": ""
+		}
+	],
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.exito && jsonData.datos.token) {",
+									"    pm.collectionVariables.set('token', jsonData.datos.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@sistema.com\",\n    \"password\": \"Admin#2024\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "login"]
+						}
+					}
+				},
+				{
+					"name": "Registro (requiere token)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nombres\": \"Nuevo Usuario\",\n    \"primer_apellido\": \"Apellido\",\n    \"segundo_apellido\": \"\",\n    \"email\": \"nuevo@example.com\",\n    \"password\": \"Test#2024\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/registro",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "registro"]
+						}
+					}
+				},
+				{
+					"name": "Verificar Token (p迆blico)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/verificar-token",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "verificar-token"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Usuarios",
+			"item": [
+				{
+					"name": "Listar usuarios",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios?estado=ACT&email=&nombres=",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios"],
+							"query": [
+								{
+									"key": "estado",
+									"value": "ACT",
+									"disabled": true
+								},
+								{
+									"key": "email",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "nombres",
+									"value": "",
+									"disabled": true
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Actualizar usuario por ID",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nombres\": \"Nombre Actualizado\",\n    \"primer_apellido\": \"NuevoApellido\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "1"]
+						}
+					}
+				},
+				{
+					"name": "Activar usuario",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/1/activar",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "1", "activar"]
+						}
+					}
+				},
+				{
+					"name": "Inactivar usuario",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/1/inactivar",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "1", "inactivar"]
+						}
+					}
+				},
+				{
+					"name": "Bloquear usuario (duraci車n opcional)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"duracion\": 60\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/1/bloquear",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "1", "bloquear"]
+						}
+					}
+				},
+				{
+					"name": "Eliminar usuario (l車gico)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "1"]
+						}
+					}
+				},
+				{
+					"name": "Resetear contrase?a de usuario (admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nuevaPassword\": \"Reset#2024\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/1/resetear-password",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "1", "resetear-password"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Perfil",
+			"item": [
+				{
+					"name": "Ver perfil propio",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/perfil",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "perfil"]
+						}
+					}
+				},
+				{
+					"name": "Actualizar perfil propio",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nombres\": \"Nombre Cambiado\",\n    \"primer_apellido\": \"Perez\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/perfil",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "perfil"]
+						}
+					}
+				},
+				{
+					"name": "Cambiar contrase?a (propio)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"passwordActual\": \"Admin#2024\",\n    \"nuevaPassword\": \"Nueva#Clave1\",\n    \"confirmarPassword\": \"Nueva#Clave1\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/perfil/cambiar-password",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "perfil", "cambiar-password"]
+						}
+					}
+				},
+				{
+					"name": "Subir/Actualizar foto propia (multipart)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "foto",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/perfil/foto",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "perfil", "foto"]
+						}
+					}
+				},
+				{
+					"name": "Ver foto propia",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/perfil/foto",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "perfil", "foto"]
+						}
+					}
+				},
+				{
+					"name": "Eliminar foto propia",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/perfil/foto",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "perfil", "foto"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Roles",
+			"item": [
+				{
+					"name": "Listar roles",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/roles",
+							"host": ["{{base_url}}"],
+							"path": ["api", "roles"]
+						}
+					}
+				},
+				{
+					"name": "Crear rol",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nombre\": \"ADMIN\",\n    \"descripcion\": \"Administrador del sistema\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/roles",
+							"host": ["{{base_url}}"],
+							"path": ["api", "roles"]
+						}
+					}
+				},
+				{
+					"name": "Obtener rol por ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/roles/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "roles", "1"]
+						}
+					}
+				},
+				{
+					"name": "Actualizar rol",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nombre\": \"ADMIN\",\n    \"descripcion\": \"Administrador principal\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/roles/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "roles", "1"]
+						}
+					}
+				},
+				{
+					"name": "Activar rol",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/roles/1/activar",
+							"host": ["{{base_url}}"],
+							"path": ["api", "roles", "1", "activar"]
+						}
+					}
+				},
+				{
+					"name": "Inactivar rol",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/roles/1/inactivar",
+							"host": ["{{base_url}}"],
+							"path": ["api", "roles", "1", "inactivar"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Asignaciones",
+			"item": [
+				{
+					"name": "Asignar rol a usuario",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"rol_id\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/1/roles",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "1", "roles"]
+						}
+					}
+				},
+				{
+					"name": "Desactivar asignaci車n de rol",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/1/roles/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "1", "roles", "1"]
+						}
+					}
+				},
+				{
+					"name": "Listar roles de un usuario",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/1/roles",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "1", "roles"]
+						}
+					}
+				},
+				{
+					"name": "Listar usuarios de un rol",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/roles/1/usuarios",
+							"host": ["{{base_url}}"],
+							"path": ["api", "roles", "1", "usuarios"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Password Reset (c車digo)",
+			"item": [
+				{
+					"name": "Solicitar c車digo de restablecimiento",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@sistema.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/solicitar-reset",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "solicitar-reset"]
+						}
+					}
+				},
+				{
+					"name": "Restablecer contrase?a con c車digo",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@sistema.com\",\n    \"codigo\": \"123456\",\n    \"password\": \"Nueva#Clave1\",\n    \"confirmarPassword\": \"Nueva#Clave1\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/resetear-password",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "resetear-password"]
+						}
+					}
+				}
+			]
+		}
+	]
+}

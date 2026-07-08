@@ -1,0 +1,643 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "Microservicio de Usuarios - API Completa",
+		"description": "Colección completa de APIs para gestión de usuarios con autenticación JWT, validaciones avanzadas y encriptación SHA-512\n\n## 🔐 Características\n- Registro de usuarios con validaciones\n- Login con JWT\n- Verificación de tokens\n- Refresco automático de tokens\n- Perfil de usuario protegido\n- Manejo de bloqueos por intentos fallidos\n- Encriptación SHA-512 con salt\n\n## 📋 Flujo de Uso\n1. Registrar Usuario\n2. Iniciar Sesión (guarda token automáticamente)\n3. Verificar Token\n4. Obtener Perfil\n5. Refrescar Token (si es necesario)\n\n## 🔑 Variables de Entorno Requeridas\n- base_url: URL base de la API (default: http://localhost:3000)\n- token: Token JWT (se guarda automáticamente al hacer login)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12345678"
+	},
+	"item": [
+		{
+			"name": "🔐 Autenticación",
+			"item": [
+				{
+					"name": "📝 Registrar Usuario",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Validar respuesta exitosa",
+									"pm.test('Status 201 Created', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Respuesta exitosa', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"    pm.expect(jsonData.data).to.have.property('email');",
+									"    pm.expect(jsonData.data).to.have.property('id');",
+									"});",
+									"",
+									"pm.test('No expone contraseña', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data).to.not.have.property('password');",
+									"});",
+									"",
+									"// Guardar email para pruebas",
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set('registered_email', jsonData.data.email);",
+									"    console.log('✅ Email registrado:', jsonData.data.email);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"primer_apellido\": \"García\",\n  \"segundo_apellido\": \"López\",\n  \"nombres\": \"María José\",\n  \"email\": \"maria.garcia@empresa.com\",\n  \"password\": \"Admin@123\",\n  \"foto\": \"https://ejemplo.com/fotos/maria.jpg\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register"
+							]
+						},
+						"description": "Registra un nuevo usuario en el sistema.\n\n**Validaciones:**\n- Email debe contener @\n- Contraseña: mínimo 1 mayúscula, 1 minúscula, 1 carácter especial\n- Password se encripta con SHA-512 + salt\n\n**Campos opcionales:**\n- primer_apellido, segundo_apellido, foto"
+					},
+					"response": [
+						{
+							"name": "Registro Exitoso",
+							"status": "Created",
+							"code": 201,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"success\": true,\n  \"data\": {\n    \"id\": 1,\n    \"nombres\": \"María José\",\n    \"primer_apellido\": \"García\",\n    \"segundo_apellido\": \"López\",\n    \"email\": \"maria.garcia@empresa.com\",\n    \"estado_usuario\": \"ACT\",\n    \"ultimo_acceso\": null,\n    \"foto\": \"https://ejemplo.com/fotos/maria.jpg\"\n  }\n}"
+						},
+						{
+							"name": "Error - Email sin @",
+							"status": "Bad Request",
+							"code": 400,
+							"body": "{\n  \"error\": \"El email debe contener @\"\n}"
+						},
+						{
+							"name": "Error - Contraseña débil",
+							"status": "Bad Request",
+							"code": 400,
+							"body": "{\n  \"error\": \"La contraseña debe tener al menos una mayúscula, una minúscula y un carácter especial\"\n}"
+						},
+						{
+							"name": "Error - Usuario existe",
+							"status": "Conflict",
+							"code": 409,
+							"body": "{\n  \"error\": \"El usuario ya existe\"\n}"
+						}
+					]
+				},
+				{
+					"name": "🔑 Iniciar Sesión",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Validar respuesta exitosa",
+									"pm.test('Status 200 OK', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Token JWT generado', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"    pm.expect(jsonData.data).to.have.property('token');",
+									"    pm.expect(jsonData.data.token).to.be.a('string').and.not.empty;",
+									"});",
+									"",
+									"pm.test('Datos de usuario incluidos', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.user).to.have.property('email');",
+									"    pm.expect(jsonData.data.user).to.have.property('id');",
+									"    pm.expect(jsonData.data.user).to.not.have.property('password');",
+									"});",
+									"",
+									"// Guardar token automáticamente",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set('token', jsonData.data.token);",
+									"    pm.environment.set('user_id', jsonData.data.user.id);",
+									"    pm.environment.set('user_email', jsonData.data.user.email);",
+									"    console.log('✅ Token guardado automáticamente');",
+									"    console.log('👤 Usuario:', jsonData.data.user.email);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"maria.garcia@empresa.com\",\n  \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Autentica al usuario y retorna token JWT.\n\n⚠️ **Importante:** El token se guarda automáticamente en la variable de entorno.\n\n**Después de 5 intentos fallidos:**\n- La cuenta se bloquea por 30 minutos\n- Se retorna error 423 Locked"
+					},
+					"response": [
+						{
+							"name": "Login Exitoso",
+							"status": "OK",
+							"code": 200,
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n  \"success\": true,\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJtYXJpYS5nYXJjaWFAZW1wcmVzYS5jb20iLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MTcwMDA4NjQwMH0.firma_jwt_aqui\",\n    \"user\": {\n      \"id\": 1,\n      \"nombres\": \"María José\",\n      \"primer_apellido\": \"García\",\n      \"segundo_apellido\": \"López\",\n      \"email\": \"maria.garcia@empresa.com\",\n      \"estado_usuario\": \"ACT\",\n      \"ultimo_acceso\": \"2024-01-15T10:30:00.000Z\",\n      \"foto\": null\n    }\n  }\n}"
+						},
+						{
+							"name": "Error - Credenciales inválidas",
+							"status": "Unauthorized",
+							"code": 401,
+							"body": "{\n  \"error\": \"Credenciales inválidas\"\n}"
+						},
+						{
+							"name": "Error - Usuario bloqueado",
+							"status": "Locked",
+							"code": 423,
+							"body": "{\n  \"error\": \"Usuario bloqueado. Intente más tarde\"\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🛡️ Gestión de Tokens",
+			"item": [
+				{
+					"name": "✅ Verificar Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 OK', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Token válido confirmado', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"    pm.expect(jsonData.data.valid).to.be.true;",
+									"});",
+									"",
+									"pm.test('Información del token incluida', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.token).to.have.property('remainingTime');",
+									"    pm.expect(jsonData.data.token).to.have.property('expiresInSeconds');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/verify",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"verify"
+							]
+						},
+						"description": "Verifica si un token JWT es válido y retorna información detallada.\n\n**Parámetros opcionales:**\n- `?checkUser=false` - No verifica usuario en BD (más rápido)\n\n**Información retornada:**\n- Datos del usuario\n- Tiempo de emisión y expiración\n- Tiempo restante formateado\n- Segundos hasta expiración"
+					},
+					"response": [
+						{
+							"name": "Token Válido",
+							"status": "OK",
+							"code": 200,
+							"body": "{\n  \"success\": true,\n  \"data\": {\n    \"valid\": true,\n    \"user\": {\n      \"id\": 1,\n      \"email\": \"maria.garcia@empresa.com\",\n      \"nombres\": \"María José\",\n      \"estado_usuario\": \"ACT\"\n    },\n    \"token\": {\n      \"issuedAt\": \"2024-01-15T10:30:00.000Z\",\n      \"expiresAt\": \"2024-01-16T10:30:00.000Z\",\n      \"remainingTime\": \"23h 45m 30s\",\n      \"expiresInSeconds\": 85530\n    }\n  },\n  \"message\": \"Token válido\"\n}"
+						},
+						{
+							"name": "Token Expirado",
+							"status": "Unauthorized",
+							"code": 401,
+							"body": "{\n  \"success\": false,\n  \"error\": \"El token ha expirado\",\n  \"code\": \"TOKEN_EXPIRED\"\n}"
+						},
+						{
+							"name": "Token Inválido",
+							"status": "Unauthorized",
+							"code": 401,
+							"body": "{\n  \"success\": false,\n  \"error\": \"Token inválido\",\n  \"code\": \"TOKEN_INVALID\"\n}"
+						}
+					]
+				},
+				{
+					"name": "🔄 Refrescar Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 OK', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Si se generó nuevo token, actualizarlo",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data.refreshed) {",
+									"        pm.environment.set('token', jsonData.data.newToken);",
+									"        console.log('🔄 Token actualizado automáticamente');",
+									"    } else {",
+									"        console.log('✅ Token aún válido, no necesita refresco');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"threshold\": 300\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/refresh",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"refresh"
+							]
+						},
+						"description": "Verifica el token y lo refresca si está cerca de expirar.\n\n**Parámetros:**\n- `threshold`: Segundos antes de expirar para refrescar (default: 300 = 5 min)\n\n**Respuesta:**\n- Si se refrescó: incluye `newToken`\n- Si no necesita: `refreshed: false`"
+					},
+					"response": [
+						{
+							"name": "Token Refrescado",
+							"status": "OK",
+							"code": 200,
+							"body": "{\n  \"success\": true,\n  \"data\": {\n    \"valid\": true,\n    \"user\": { ... },\n    \"token\": { ... },\n    \"refreshed\": true,\n    \"newToken\": \"eyJhbGciOi...\"\n  },\n  \"message\": \"Token refrescado exitosamente\"\n}"
+						},
+						{
+							"name": "Token Aún Válido",
+							"status": "OK",
+							"code": 200,
+							"body": "{\n  \"success\": true,\n  \"data\": {\n    \"valid\": true,\n    \"user\": { ... },\n    \"token\": { ... },\n    \"refreshed\": false,\n    \"newToken\": null\n  },\n  \"message\": \"Token aún válido\"\n}"
+						}
+					]
+				},
+				{
+					"name": "🔍 Decodificar Token (Debug)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"{{token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/decode",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"decode"
+							]
+						},
+						"description": "Decodifica un token JWT sin verificar su firma (solo para debugging).\n\n⚠️ **No usar en producción.**\n\n**Útil para:**\n- Ver el payload sin validar firma\n- Diagnosticar tokens malformados\n- Verificar claims del token"
+					},
+					"response": [
+						{
+							"name": "Token Decodificado",
+							"status": "OK",
+							"code": 200,
+							"body": "{\n  \"success\": true,\n  \"data\": {\n    \"header\": {\n      \"alg\": \"HS256\",\n      \"typ\": \"JWT\"\n    },\n    \"payload\": {\n      \"id\": 1,\n      \"email\": \"maria.garcia@empresa.com\",\n      \"iat\": 1700000000,\n      \"exp\": 1700086400\n    },\n    \"signature\": \"abc123...\"\n  }\n}"
+						}
+					]
+				},
+				{
+					"name": "🧪 Test Token Manual",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"{{token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/test-token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"test-token"
+							]
+						},
+						"description": "Endpoint de diagnóstico para probar tokens manualmente.\n\n**Utilidad:**\n- Verificar por qué un token falla\n- Obtener información detallada del error\n- Ver payload decodificado incluso si el token es inválido"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👤 Perfil de Usuario",
+			"item": [
+				{
+					"name": "📋 Obtener Perfil",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 OK', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Datos de perfil completos', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"    pm.expect(jsonData.data).to.have.property('email');",
+									"    pm.expect(jsonData.data).to.have.property('nombres');",
+									"    pm.expect(jsonData.data).to.have.property('estado_usuario');",
+									"    pm.expect(jsonData.data).to.not.have.property('password');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"profile"
+							]
+						},
+						"description": "Obtiene el perfil del usuario autenticado.\n\n**Requiere:** Token JWT válido en header Authorization.\n\n**Retorna:**\n- Datos del perfil (sin contraseña)\n- Último acceso\n- Estado de la cuenta"
+					},
+					"response": [
+						{
+							"name": "Perfil Obtenido",
+							"status": "OK",
+							"code": 200,
+							"body": "{\n  \"success\": true,\n  \"data\": {\n    \"id\": 1,\n    \"nombres\": \"María José\",\n    \"primer_apellido\": \"García\",\n    \"segundo_apellido\": \"López\",\n    \"email\": \"maria.garcia@empresa.com\",\n    \"estado_usuario\": \"ACT\",\n    \"ultimo_acceso\": \"2024-01-15T10:35:00.000Z\",\n    \"foto\": null\n  }\n}"
+						},
+						{
+							"name": "Error - No autenticado",
+							"status": "Unauthorized",
+							"code": 401,
+							"body": "{\n  \"success\": false,\n  \"error\": \"Token no proporcionado\",\n  \"code\": \"TOKEN_MISSING\"\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🧪 Pruebas de Casos Especiales",
+			"item": [
+				{
+					"name": "❌ Login - Email inválido",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"email_sin_arroba\",\n  \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Prueba de validación: Email debe contener @"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Login - Contraseña débil",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"test@test.com\",\n  \"password\": \"debil\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Prueba de validación: Contraseña debe tener mayúscula, minúscula y carácter especial"
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Login - Intento fallido (x5 para bloqueo)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"maria.garcia@empresa.com\",\n  \"password\": \"PasswordErronea@1\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "⚠️ Ejecutar 5 veces para probar bloqueo de cuenta.\n\nDespués del 5to intento, la cuenta se bloquea por 30 minutos y retorna error 423."
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Perfil sin Token",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"profile"
+							]
+						},
+						"description": "Prueba de acceso sin autenticación. Debe retornar 401."
+					},
+					"response": []
+				},
+				{
+					"name": "❌ Perfil con Token Inválido",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer token_invalido_123456",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"profile"
+							]
+						},
+						"description": "Prueba con un token completamente inválido."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "registered_email",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_email",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
