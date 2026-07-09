@@ -1,10 +1,14 @@
 import { ComunidadRepository } from '../repositories/comunidad.repository.js';
+import { SecuenciaComunidadRepository } from '../repositories/secuencia-comunidad.repository.js';
 import { config } from '../config/configuracion.js';
 import { AppError } from '../utils/errores.util.js';
+import pool from '../config/database.js';
 
 export class ComunidadService {
   constructor() {
     this.comunidadRepo = new ComunidadRepository();
+    this.secuenciaRepo = new SecuenciaComunidadRepository();
+
   }
 
   _mapear(com) {
@@ -23,14 +27,15 @@ export class ComunidadService {
     };
   }
 
-  async listarComunidades(filtros = {}) {
-
-    //async listar(codReg = null, estado = null) {
-   // const comunidades = await this.comunidadRepo.listar(codReg, estado);
-      const comunidades = await this.comunidadRepo.listar(filtros);
-
-    return comunidades.map(c => this._mapear(c));
-  }
+async listarComunidades(filtros = {}, paginacion = {}) {
+  const resultado = await this.comunidadRepo.listar(filtros, paginacion);
+  return {
+    datos: resultado.datos.map(c => this._mapear(c)),
+    total: resultado.total,
+    pagina: Math.floor((paginacion.offset || 0) / (paginacion.limit || 100)) + 1,
+    totalPaginas: Math.ceil(resultado.total / (paginacion.limit || 100))
+  };
+}
 
   async obtenerPorId(id) {
     const com = await this.comunidadRepo.buscarPorId(id);
@@ -44,25 +49,52 @@ export class ComunidadService {
     return this._mapear(com);
   }
 
-  async registrar(dto, usuarioRegistrador) {
-    // Validar unicidad del código
-    const existente = await this.comunidadRepo.buscarPorCodigo(dto.cod_com);
-    if (existente) throw new AppError('El código de comunidad ya existe.', 409);
+   async registrar(dto, usuarioRegistrador) {
+    // Ya no se valida que dto.cod_com exista; se generará
+    // Se ignora dto.cod_com si viene, o se puede eliminar
 
-    await this.comunidadRepo.crear({
-      cod_reg: dto.cod_reg,
-      cod_com: dto.cod_com,
-      descripcion: dto.descripcion,
-      descripcion_corta: dto.descripcion_corta,
-      estado: config.ESTADO.ACTIVO,
-      usuario_registro: usuarioRegistrador,
-    });
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const regionalExiste = await this.comunidadRepo.validarRegional(dto.cod_reg);
+      if (!regionalExiste) throw new AppError('La regional no existe.', 400);
+      // 1. Obtener secuencia con bloqueo
+      const secuencia = await this.secuenciaRepo.obtenerPorRegional(dto.cod_reg, connection);
+      if (!secuencia) {
+        throw new AppError(`No existe rango para la regional ${dto.cod_reg}`, 400);
+      }
 
-    // Retornar la comunidad recién creada (buscar por código)
-    const nueva = await this.comunidadRepo.buscarPorCodigo(dto.cod_com);
-    return { mensaje: 'Comunidad registrada exitosamente.', datos: this._mapear(nueva) };
+      const { ultimoCodigo, limiteSuperior } = secuencia;
+      const nuevoCodigo = ultimoCodigo + 1;
+      if (nuevoCodigo > limiteSuperior) {
+        throw new AppError(`Códigos agotados para la regional ${dto.cod_reg} (límite ${limiteSuperior})`, 409);
+      }
+
+      // 2. Actualizar secuencia
+      await this.secuenciaRepo.actualizarUltimoCodigo(dto.cod_reg, nuevoCodigo, connection);
+
+      // 3. Crear comunidad con el código generado
+      await this.comunidadRepo.crear({
+        cod_reg: dto.cod_reg,
+        cod_com: nuevoCodigo,          // <-- automático
+        descripcion: dto.descripcion,
+        descripcion_corta: dto.descripcion_corta,
+        estado: config.ESTADO.ACTIVO,
+        usuario_registro: usuarioRegistrador,
+      }, connection); // pasar conexión si el método lo acepta
+
+      await connection.commit();
+
+      // 4. Obtener la comunidad recién creada
+      const nueva = await this.comunidadRepo.buscarPorCodigo(nuevoCodigo);
+      return { mensaje: 'Comunidad registrada exitosamente.', datos: this._mapear(nueva) };
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
-
   async actualizar(id, dto, usuarioModificador) {
     const com = await this.comunidadRepo.buscarPorId(id);
     if (!com) throw new AppError('Comunidad no encontrada.', 404);

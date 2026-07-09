@@ -167,7 +167,7 @@ export const validarAsignacionRol = [
 
 export const validarComunidad = [
   body('cod_reg').notEmpty().isInt().withMessage('Código de regional obligatorio.'),
-  body('cod_com').notEmpty().isInt().withMessage('Código de comunidad obligatorio.'),
+ // body('cod_com').notEmpty().isInt().withMessage('Código de comunidad obligatorio.'),
   body('descripcion').notEmpty().isLength({ max: 150 }).withMessage('Descripción obligatoria (máx. 150).'),
   body('descripcion_corta').notEmpty().isLength({ max: 50 }).withMessage('Descripción corta obligatoria (máx. 50).'),
   (req, res, next) => {

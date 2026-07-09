@@ -2,45 +2,97 @@ import pool from '../config/database.js';
 import { Comunidad } from '../models/comunidad.model.js';
 
 export class ComunidadRepository {
-  async listar(filtros = {}) {
-    let query = `
-      SELECT c.*, 
-             r.descripcion AS descripcion_regional,
-             r.cod_prov AS cod_prov,
-             pv.descripcion AS descripcion_provincia,
-             d.descripcion AS descripcion_departamento
-      FROM comunidad c
-      LEFT JOIN regional r ON c.cod_reg = r.cod_reg
-      LEFT JOIN provincia pv ON r.cod_prov = pv.cod_prov
-      LEFT JOIN departamento d ON pv.cod_dep = d.cod_dep
-      WHERE 1=1
-    `;
-    const params = [];
+  // src/repositories/comunidad.repository.js
 
-    if (filtros.cod_reg) {
-      query += ' AND c.cod_reg = ?';
-      params.push(filtros.cod_reg);
-    }
-    if (filtros.cod_prov) {
-      query += ' AND r.cod_prov = ?';
-      params.push(filtros.cod_prov);
-    }
-    if (filtros.estado) {
-      query += ' AND c.estado = ?';
-      params.push(filtros.estado);
-    }
+async listar(filtros = {}, paginacion = {}) {
+  const {
+    cod_reg,
+    cod_prov,
+    estado,
+    busqueda,
+    orderBy = 'descripcion',        // nombre amigable
+    orderDir = 'ASC'
+  } = filtros;
 
-    query += ' ORDER BY c.descripcion ASC';
-    const [rows] = await pool.query(query, params);
-    
-    return rows.map(row => {
-      const com = new Comunidad(row);
-      com.descripcion_regional = row.descripcion_regional;
-      com.descripcion_provincia = row.descripcion_provincia;
-      com.descripcion_departamento = row.departamento_descripcion; // Ajusta el nombre según tu modelo
-      return com;
-    });
+  const { limit = 100, offset = 0 } = paginacion;
+
+  // --- Mapeo de campos permitidos para ORDER BY (seguro) ---
+  const camposPermitidos = {
+    'cod_com': 'c.cod_com',
+    'descripcion': 'c.descripcion',
+    'regional': 'r.descripcion',
+    // Se pueden agregar más: 'estado', 'fecha_registro', etc.
+  };
+  const columnaOrden = camposPermitidos[orderBy] || 'c.descripcion';
+  const direccion = (orderDir.toUpperCase() === 'DESC') ? 'DESC' : 'ASC';
+
+  // --- Construcción WHERE ---
+  const whereConditions = [];
+  const params = [];
+
+  if (cod_reg) {
+    whereConditions.push('c.cod_reg = ?');
+    params.push(cod_reg);
   }
+  if (cod_prov) {
+    whereConditions.push('r.cod_prov = ?');
+    params.push(cod_prov);
+  }
+  if (estado) {
+    whereConditions.push('c.estado = ?');
+    params.push(estado);
+  }
+  if (busqueda) {
+    whereConditions.push('(c.descripcion LIKE ? OR c.descripcion_corta LIKE ? OR c.cod_com LIKE ?)');
+    const like = `%${busqueda}%`;
+    params.push(like, like, `%${busqueda}%`);
+  }
+
+  const whereClause = whereConditions.length
+    ? 'WHERE ' + whereConditions.join(' AND ')
+    : '';
+
+  // --- Consulta principal (con paginación) ---
+  const query = `
+    SELECT c.*, 
+           r.descripcion AS descripcion_regional,
+           r.cod_prov AS cod_prov,
+           pv.descripcion AS descripcion_provincia,
+           d.descripcion AS descripcion_departamento
+    FROM comunidad c
+    LEFT JOIN regional r ON c.cod_reg = r.cod_reg
+    LEFT JOIN provincia pv ON r.cod_prov = pv.cod_prov
+    LEFT JOIN departamento d ON pv.cod_dep = d.cod_dep
+    ${whereClause}
+    ORDER BY ${columnaOrden} ${direccion}
+    LIMIT ? OFFSET ?
+  `;
+
+  const [rows] = await pool.query(query, [...params, limit, offset]);
+
+  // --- Consulta para contar total (sin paginación) ---
+  const countQuery = `
+    SELECT COUNT(*) AS total
+    FROM comunidad c
+    LEFT JOIN regional r ON c.cod_reg = r.cod_reg
+    LEFT JOIN provincia pv ON r.cod_prov = pv.cod_prov
+    LEFT JOIN departamento d ON pv.cod_dep = d.cod_dep
+    ${whereClause}
+  `;
+  const [countRows] = await pool.query(countQuery, params);
+  const total = countRows[0].total;
+
+  // --- Mapeo de resultados ---
+  const datos = rows.map(row => {
+    const com = new Comunidad(row);
+    com.descripcion_regional = row.descripcion_regional;
+    com.descripcion_provincia = row.descripcion_provincia;
+    com.descripcion_departamento = row.descripcion_departamento;
+    return com;
+  });
+
+  return { datos, total };
+}
 
   async buscarPorId(id) {
     const [rows] = await pool.query(
@@ -68,14 +120,16 @@ export class ComunidadRepository {
     return com;
   }
 
-  async crear(datos) {
-    const { cod_reg, cod_com, descripcion, descripcion_corta, estado, usuario_registro } = datos;
-    await pool.query(
-      `INSERT INTO comunidad (cod_reg, cod_com, descripcion, descripcion_corta, estado, usuario_registro, fecha_registro)
-       VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-      [cod_reg, cod_com, descripcion, descripcion_corta, estado, usuario_registro]
-    );
-  }
+  // src/repositories/comunidad.repository.js
+async crear(datos, connection = null) {
+  const conn = connection || pool;
+  const { cod_reg, cod_com, descripcion, descripcion_corta, estado, usuario_registro } = datos;
+  await conn.query(
+    `INSERT INTO comunidad (cod_reg, cod_com, descripcion, descripcion_corta, estado, usuario_registro, fecha_registro)
+     VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+    [cod_reg, cod_com, descripcion, descripcion_corta, estado, usuario_registro]
+  );
+}
 
   async actualizar(id, campos) {
     const keys = Object.keys(campos);
@@ -100,5 +154,10 @@ export class ComunidadRepository {
     `UPDATE comunidad SET estado = ?, usuario_ultima_modificacion = ?, fecha_ultima_actualizacion = NOW() WHERE id = ?`,
     [estadoActivo, usuarioModificador, id]
   );
+}
+
+async validarRegional(codReg) {
+  const [rows] = await pool.query('SELECT 1 FROM regional WHERE cod_reg = ?', [codReg]);
+  return rows.length > 0;
 }
 }
