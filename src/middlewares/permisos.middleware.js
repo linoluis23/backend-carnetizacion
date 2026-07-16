@@ -61,31 +61,29 @@ import { RolPermisoService } from '../services/rol-permiso.service.js';
 
 const rolPermisoService = new RolPermisoService();
 
-/**
- * Middleware que verifica si el usuario tiene acceso al módulo solicitado
- * @param {string} permisoCodigo - Código del permiso requerido
- */
-export function tienePermiso(permisoCodigo) {
+export const tienePermiso = (codigoPermiso) => {
   return async (req, res, next) => {
     try {
       if (!req.usuario) {
-        return res.status(401).json({ mensaje: 'Autenticación requerida.' });
+        return res.status(401).json({ mensaje: 'No autenticado' });
+      }
+
+      // Si es ADMIN, pasa directo
+      const esAdmin = req.usuario.roles?.some(r => r.nombre === 'ADMIN');
+      if (esAdmin) {
+        return next();
       }
 
       // Obtener permisos del usuario
       const permisos = await rolPermisoService.obtenerCodigosPermisoDeUsuario(req.usuario.id);
       
-      // Si tiene el permiso, continuar
-      if (permisos.includes(permisoCodigo)) {
-        return next();
+      if (permisos.includes(codigoPermiso)) {
+        next();
+      } else {
+        res.status(403).json({ mensaje: 'No tiene permiso para realizar esta acción' });
       }
-
-      return res.status(403).json({ 
-        exito: false, 
-        mensaje: 'No tiene permisos para acceder a este módulo.' 
-      });
     } catch (error) {
       next(error);
     }
   };
-}
+};

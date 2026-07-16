@@ -96,6 +96,7 @@ export class UsuarioRolRepository {
       ]
     );
   }
+  /*
 async findActiveAsignacionByUsuario(usuarioId) {
   const [rows] = await pool.query(
     `SELECT * FROM usuario_rol 
@@ -103,8 +104,18 @@ async findActiveAsignacionByUsuario(usuarioId) {
     [usuarioId, config.ESTADOS_USUARIO_ROL.ACTIVO]   // 'ACT'
   );
   return rows.length ? new UsuarioRol(rows[0]) : null;
-}
+}*/
 
+// en usuario-rol.repository.js
+  async findActiveAsignacionByUsuario(usuarioId) {
+    const [rows] = await pool.query(
+      `SELECT * FROM usuario_rol 
+       WHERE usuario_id = ? AND estado_usuario_rol = 'ACT' 
+       ORDER BY fecha_asignacion DESC LIMIT 1`,
+      [usuarioId]
+    );
+    return rows.length ? rows[0] : null;
+  }
   /**
  * Busca la asignación ACTIVA para un usuario y rol específicos.
  * @returns {Promise<UsuarioRol|null>}

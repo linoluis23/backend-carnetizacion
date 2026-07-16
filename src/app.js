@@ -17,7 +17,8 @@ import cargoRoutes from './routes/cargo.routes.js';
 import programacionRoutes from './routes/programacion.routes.js';
 import solicitudRoutes from './routes/solicitud-carnet.routes.js';
 import certificadoRoutes from './routes/certificado.routes.js';
-
+import permisoRoutes from './routes/permiso.routes.js';
+import rolPermisoRoutes from './routes/rol-permiso.routes.js';
 
 
 
@@ -50,6 +51,8 @@ app.use('/api/v1/cargos', cargoRoutes);
 app.use('/api/v1/programaciones', programacionRoutes);
 app.use('/api/v1/solicitudes', solicitudRoutes);
 app.use('/api/v1/', certificadoRoutes);
+app.use('/api/v1/permisos', permisoRoutes);
+app.use('/api/v1', rolPermisoRoutes);
 // Manejador de errores centralizado
 app.use((err, req, res, next) => {
   if (err instanceof AppError) {

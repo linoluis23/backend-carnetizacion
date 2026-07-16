@@ -1,6 +1,9 @@
 import { body, validationResult } from 'express-validator';
 import { config } from '../config/configuracion.js';
+import { RolPermisoService } from '../services/rol-permiso.service.js';
 
+//const rolPermisoService = new RolPermisoService();
+//import Joi from 'joi';
 /**
  * Middleware para validar campos de registro.
  */
@@ -190,6 +193,11 @@ export const validarPersona = [
   body('genero').notEmpty().withMessage('Género obligatorio.')
     .custom(val => config.GENERO?.hasOwnProperty(val) ? true : Promise.reject('Género no válido.')),
 
+  body('estado_civil')
+  .optional({ values: 'falsy' })
+  .custom(val => Object.values(config.ESTADOS_CIVIL).includes(val) ? true : Promise.reject('Estado civil no válido.'))
+  .isLength({ max: 100 }).withMessage('Máximo 100 caracteres.'),
+
   // Celular: opcional, pero si se envía debe ser solo dígitos
   body('celular')
   .optional({ values: 'falsy' })
@@ -326,3 +334,63 @@ export const validarGenerarCertificado = [
     next();
   },
 ];
+
+export const validarPermiso = (req, res, next) => {
+  const { codigo, nombre, descripcion } = req.body;
+
+  // Validaciones básicas
+  if (!codigo || codigo.trim() === '') {
+    return res.status(400).json({
+      exito: false,
+      mensaje: 'El campo "codigo" es obligatorio',
+    });
+  }
+
+  if (!nombre || nombre.trim() === '') {
+    return res.status(400).json({
+      exito: false,
+      mensaje: 'El campo "nombre" es obligatorio',
+    });
+  }
+
+  // Si todo está bien, continúa
+  next();
+};
+
+
+/*
+export const tienePermiso = (codigoPermiso) => {
+  return async (req, res, next) => {
+    try {
+      if (!req.usuario) {
+        return res.status(401).json({ mensaje: 'No autenticado' });
+      }
+
+      // Si el usuario es ADMIN, tiene acceso a todo (opcional)
+      const esAdmin = req.usuario.roles?.some(r => r.nombre === 'ADMIN');
+      if (esAdmin) {
+        return next();
+      }
+
+      // Obtener códigos de permisos del usuario
+      const permisos = await rolPermisoService.obtenerCodigosPermisoDeUsuario(req.usuario.id);
+      
+      if (permisos.includes(codigoPermiso)) {
+        next();
+      } else {
+        res.status(403).json({ mensaje: 'No tiene permiso para realizar esta acción' });
+      }
+    } catch (error) {
+      next(error);
+    }
+  };
+};*/
+
+/*
+export const validarPermiso = (req, res, next) => {
+  const { codigo, nombre } = req.body;
+  if (!codigo || !nombre) {
+    return res.status(400).json({ mensaje: 'Código y nombre son obligatorios' });
+  }
+  next();
+};*/

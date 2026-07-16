@@ -63,7 +63,17 @@ ESTADOS_SOLICITUD: { PENDIENTE: 'PEN', APROBADO: 'APR', RECHAZADO: 'REC', EMITID
 FECHA_VIGENCIA_DEFAULT: '2028-12-31',
 VIGENCIA_CERTIFICADO: 365,  // días
 
-
+ESTADOS_CIVIL: {
+  SOLTERO_A: 'S',
+  CASADO_A: 'C',
+  DIVORCIADO_A: 'D',
+  VIUDO_A: 'V',
+},
+ESTADOS_PERMISO: {
+  ACTIVO: 'ACT',
+  INACTIVO: 'INA',
+  ELIMINADO: 'ELI',
+},
 
 };
 
@@ -225,6 +235,25 @@ if (Object.keys(paramsEstSol).length > 0) {
     config.ESTADOS_SOLICITUD[descripcion.toUpperCase().replace(/ /g, '_')] = codigo;
   }
 }
+
+// --- ESTADO_CIVIL ---
+const paramsEstCiv = await repo.obtenerPorGrupo('ESTADO_CIVIL');
+if (Object.keys(paramsEstCiv).length > 0) {
+  config.ESTADOS_CIVIL = {};
+  for (const [codigo, descripcion] of Object.entries(paramsEstCiv)) {
+    config.ESTADOS_CIVIL[descripcion.toUpperCase().replace(/ /g, '_')] = codigo;
+  }
+}
+
+// --- ESTADO_PERMISOS ---
+const paramsEstPer = await repo.obtenerPorGrupo('ESTADO_PERMISO');
+if (Object.keys(paramsEstPer).length > 0) {
+  config.ESTADOS_PERMISO = {};
+  for (const [codigo, descripcion] of Object.entries(paramsEstPer)) {
+    config.ESTADOS_PERMISO[descripcion.toUpperCase().replace(/ /g, '_')] = codigo;
+  }
+}
+
 // --- VIGENCIA_CARNET ---
 const paramsVig = await repo.obtenerPorGrupo('VIGENCIA_CARNET');
 if (paramsVig.FECHA_VIGENCIA) {
