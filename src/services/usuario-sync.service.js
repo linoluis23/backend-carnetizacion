@@ -1,3 +1,4 @@
+// src/services/usuario-sync.service.js
 import { UsuarioRepository } from '../repositories/usuario.repository.js';
 import { UsuarioRolRepository } from '../repositories/usuario-rol.repository.js';
 import { PersonaRepository } from '../repositories/persona.repository.js';
@@ -17,22 +18,18 @@ export class UsuarioSyncService {
 
   /**
    * Sincroniza el usuario del sistema para una persona que asume un cargo.
-   * Crea el usuario si no existe (basado en documento_identidad) y asigna el rol correspondiente.
-   * @param {number} personaId
-   * @param {string} nivelCargo - 'DEPARTAMENTAL', 'REGIONAL', 'COMUNAL'
+   * Crea el usuario si no existe y asigna el rol correspondiente.
    */
   async sincronizarUsuarioAutoridad(personaId, nivelCargo) {
-    // 1. Obtener datos de la persona
+    // 1. Obtener persona
     const persona = await this.personaRepo.buscarPorId(personaId);
     if (!persona) throw new Error('Persona no encontrada.');
 
-    // 2. Buscar usuario existente por documento de identidad
+    // 2. Buscar usuario por documento
     let usuario = await this.usuarioRepo.buscarPorDocumento(persona.documento_identidad);
-    
-    // Variable para guardar la contraseña temporal (solo si se crea nuevo usuario)
     let passwordTemporal = null;
 
-    // 3. Si no existe, crear el usuario
+    // 3. Si no existe, crear usuario
     if (!usuario) {
       passwordTemporal = this._generarPasswordTemporal(persona.documento_identidad);
       const passwordHash = await encriptarPassword(passwordTemporal);
@@ -47,9 +44,6 @@ export class UsuarioSyncService {
         estado_usuario: config.ESTADOS.ACTIVO,
         usuario_registro: 'SISTEMA',
       });
-
-      // Enviar correo con credenciales
-      await this.notificacionService.enviarCredencialesUsuario(usuario, passwordTemporal);
     }
 
     // 4. Determinar el rol según el nivel del cargo
@@ -67,13 +61,21 @@ export class UsuarioSyncService {
       await this.usuarioRolRepo.crearAsignacion(usuario.id, rol.id, 'SISTEMA');
     }
 
+    // 6. Enviar notificación (solo si se creó un nuevo usuario)
+    if (passwordTemporal) {
+      await this.notificacionService.enviarCredencialesUsuario(
+        usuario,
+        passwordTemporal,
+        nombreRol,
+        process.env.FRONTEND_URL || 'http://localhost:5173'
+      );
+    }
+
     return usuario;
   }
 
   /**
-   * Desactiva el rol asociado a una autoridad cuando ésta se inactiva/suspende/elimina.
-   * @param {number} personaId
-   * @param {string} nivelCargo
+   * Desactiva el rol asociado a una autoridad.
    */
   async removerRolAutoridad(personaId, nivelCargo) {
     const persona = await this.personaRepo.buscarPorId(personaId);
@@ -99,17 +101,9 @@ export class UsuarioSyncService {
     return mapa[nivel] || 'PRESIDENTE';
   }
 
-
-async buscarUsuarioPorPersona(personaId) {
-  const persona = await this.personaRepo.buscarPorId(personaId);
-  if (!persona) return null;
-  return this.usuarioRepo.buscarPorDocumento(persona.documento_identidad);
-}
-
   _generarPasswordTemporal(documentoIdentidad) {
-  const prefijo = 'Coc@';
-  // Asegurarse de que el documento tenga al menos 6 caracteres; si no, completar con ceros
-  const doc = documentoIdentidad ? documentoIdentidad.padStart(5, '0') : '00000';
-  return prefijo + doc;
-}
+    const prefijo = 'Coc@';
+    const doc = documentoIdentidad ? documentoIdentidad.padStart(5, '0') : '00000';
+    return prefijo + doc;
+  }
 }

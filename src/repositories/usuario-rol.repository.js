@@ -148,4 +148,19 @@ async inactivarTodosRolesActivos(usuarioId, usuarioModificador) {
     const [rows] = await pool.query('SELECT * FROM usuario_rol WHERE id = ?', [id]);
     return rows.length ? new UsuarioRol(rows[0]) : null;
   }
+
+  // src/repositories/usuario-rol.repository.js
+/**
+ * Lista todas las asignaciones activas de un usuario.
+ */
+async listarActivosPorUsuario(usuarioId) {
+  const [rows] = await pool.query(
+    `SELECT ur.*, r.nombre AS rol_nombre
+     FROM usuario_rol ur
+     INNER JOIN roles r ON ur.rol_id = r.id
+     WHERE ur.usuario_id = ? AND ur.estado_usuario_rol = ?`,
+    [usuarioId, config.ESTADOS_USUARIO_ROL.ACTIVO]
+  );
+  return rows;
+}
 }

@@ -107,7 +107,7 @@ async listarComunidades(filtros = {}, paginacion = {}) {
 
     const campos = {
       cod_reg: dto.cod_reg,
-      cod_com: dto.cod_com,
+      //cod_com: dto.cod_com,
       descripcion: dto.descripcion,
       descripcion_corta: dto.descripcion_corta,
       usuario_ultima_modificacion: usuarioModificador,

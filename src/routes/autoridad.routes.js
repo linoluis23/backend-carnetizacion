@@ -6,6 +6,9 @@ import { validarAutoridad } from '../middlewares/validacion.middleware.js';
 
 const router = Router();
 
+router.get('/:id/usuario', autenticarToken, AutoridadController.obtenerUsuario);
+console.log('✅ Ruta /:id/usuario REGISTRADA');
+
 // ==================== LECTURA ====================
 // Cualquier usuario autenticado puede ver autoridades
 router.get('/', autenticarToken, AutoridadController.listar);
@@ -23,5 +26,8 @@ router.put('/:id/inactivar', autenticarToken, tienePermiso('usuarios'), Autorida
 router.put('/:id/suspender', autenticarToken, tienePermiso('usuarios'), AutoridadController.suspender);
 router.delete('/:id', autenticarToken, tienePermiso('usuarios'), AutoridadController.eliminar);
 router.get('/mi-autoridad', autenticarToken, AutoridadController.obtenerPorUsuario);
+router.get('/:id/usuario', autenticarToken, AutoridadController.obtenerUsuario);
+router.get('/usuario/actual', autenticarToken, AutoridadController.obtenerPorUsuario);
+
 
 export default router;

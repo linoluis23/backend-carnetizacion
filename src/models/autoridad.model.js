@@ -3,7 +3,7 @@ export class Autoridad {
     id, cargo_id, persona_id, cod_dep, cod_reg, cod_com,
     fecha_inicio, fecha_fin, estado, glosa,
     usuario_registro, fecha_creacion,
-    usuario_ultima_modificacion, fecha_ultima_actualizacion,
+    usuario_ultima_modificacion, fecha_ultima_actualizacion,tiene_certificado = false,
   }) {
     this.id = id;
     this.cargo_id = cargo_id;
@@ -19,5 +19,7 @@ export class Autoridad {
     this.fecha_creacion = fecha_creacion;
     this.usuario_ultima_modificacion = usuario_ultima_modificacion;
     this.fecha_ultima_actualizacion = fecha_ultima_actualizacion;
+        this.tiene_certificado = tiene_certificado;
+
   }
 }

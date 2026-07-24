@@ -27,6 +27,19 @@ export class AutoridadService {
   }
 
   _mapear(autoridad) {
+      let ambito = '';
+  if (autoridad.cargo_nivel === 'DEPARTAMENTAL') {
+    ambito = autoridad.dep_descripcion || '';
+  } else if (autoridad.cargo_nivel === 'REGIONAL') {
+    ambito = autoridad.reg_descripcion || '';
+  } else if (autoridad.cargo_nivel === 'COMUNAL') {
+    ambito = autoridad.com_descripcion || '';
+  }
+
+  const cargoConAmbito = autoridad.cargo_descripcion 
+    ? (ambito ? `${autoridad.cargo_descripcion} (${ambito})` : autoridad.cargo_descripcion)
+    : '';
+
     return {
       id: autoridad.id,
       cargo_id: autoridad.cargo_id,
@@ -38,6 +51,7 @@ export class AutoridadService {
       fecha_fin: autoridad.fecha_fin,
       estado: autoridad.estado,
       cargo_descripcion: autoridad.cargo_descripcion,
+       cargo_con_ambito: cargoConAmbito,
       cargo_nivel: autoridad.cargo_nivel,
       nombres: autoridad.nombres,
       primer_apellido: autoridad.primer_apellido,
@@ -53,6 +67,11 @@ export class AutoridadService {
       usuario_ultima_modificacion: autoridad.usuario_ultima_modificacion,
       fecha_ultima_actualizacion: autoridad.fecha_ultima_actualizacion,
       glosa: autoridad.glosa || null,
+      tiene_certificado: autoridad.tiene_certificado,
+      certificado_activo_id: autoridad.certificado_activo_id || null,
+      tiene_certificado: autoridad.tiene_certificado || false,
+      certificado_estado: autoridad.certificado_estado || null,
+      certificado_expiracion: autoridad.certificado_expiracion || null,
     };
   }
 
@@ -78,10 +97,10 @@ export class AutoridadService {
     if (persona.estado !== 'ACT') throw new AppError('La persona no está activa.', 400);
 
     // Verificar que la persona no tenga NINGUNA autoridad activa
-const autoridadExistentePersona = await this.autoridadRepo.buscarActivaPorPersona(dto.persona_id);
-if (autoridadExistentePersona) {
-  throw new AppError('La persona ya posee una autoridad activa. No puede ocupar más de un cargo simultáneamente.', 409);
-}
+    const autoridadExistentePersona = await this.autoridadRepo.buscarActivaPorPersona(dto.persona_id);
+    if (autoridadExistentePersona) {
+      throw new AppError('La persona ya posee una autoridad activa. No puede ocupar más de un cargo simultáneamente.', 409);
+    }
 
     const ambito = await this._validarAmbitoYCadenaGeografica(cargo, dto, persona);
 
@@ -156,7 +175,7 @@ if (autoridadExistentePersona) {
 
     await this.autoridadRepo.actualizar(id, campos);
     const actualizada = await this.autoridadRepo.buscarPorId(id);
-    return { mensaje: 'Autoridad actualizada.', datos: this._mapear(actualizada) };
+    return { mensaje: 'Autoridad actualizada Correctamente.', datos: this._mapear(actualizada) };
   }
 
   // ==================== CAMBIOS DE ESTADO ====================
@@ -305,6 +324,19 @@ async sincronizarRolUsuario(autoridad) {
     }
 }
 
+async obtenerAutoridadPorUsuario(usuarioId) {
+  const [rows] = await pool.query(
+    `SELECT a.*, c.nivel 
+     FROM autoridades a
+     JOIN cargos c ON a.cargo_id = c.id
+     JOIN persona p ON a.persona_id = p.id
+     WHERE p.id = (SELECT persona_id FROM usuarios WHERE id = ?) 
+     AND a.estado = 'ACT'`,
+    [usuarioId]
+  );
+  return rows.length ? rows[0] : null;
+}
+/*
 async obtenerPorUsuario(usuarioId) {
   // Obtener persona a partir del usuario (por documento)
   const usuario = await this.usuarioRepo.buscarPorId(usuarioId);
@@ -319,7 +351,58 @@ async obtenerPorUsuario(usuarioId) {
 
   return this._mapear(autoridad);
 }
+*/
+// En autoridad.service.js
+async obtenerEntidadPorUsuario(usuarioId) {
+  const usuario = await this.usuarioRepo.buscarPorId(usuarioId);
+  if (!usuario) throw new AppError('Usuario no encontrado.', 404);
+  const persona = await this.personaRepo.buscarPorDocumento(usuario.documento_identidad);
+  if (!persona) throw new AppError('Persona no encontrada.', 404);
+  const autoridad = await this.autoridadRepo.buscarActivaPorPersona(persona.id);
+  if (!autoridad) throw new AppError('No tiene una autoridad activa.', 404);
+  return autoridad;
+}
 
+
+async obtenerUsuarioPorAutoridadId(autoridadId) {
+  // 1. Obtener la autoridad
+  const autoridad = await this.autoridadRepo.buscarPorId(autoridadId);
+  if (!autoridad) throw new AppError('Autoridad no encontrada.', 404);
+
+  // 2. Obtener la persona
+  const persona = await this.personaRepo.buscarPorId(autoridad.persona_id);
+  if (!persona) throw new AppError('Persona no encontrada.', 404);
+
+  // 3. Buscar usuario por documento de identidad
+  const usuario = await this.usuarioRepo.buscarPorDocumento(persona.documento_identidad);
+  if (!usuario) throw new AppError('No existe un usuario asociado a esta autoridad.', 404);
+
+  return {
+    id: usuario.id,
+    email: usuario.email,
+    nombres: usuario.nombres,
+    primer_apellido: usuario.primer_apellido,
+    documento_identidad: usuario.documento_identidad,
+  };
+}
+
+// En autoridad.service.js, reemplazar el método comentado por este:
+
+async obtenerPorUsuario(usuarioId) {
+  // Obtener persona a partir del usuario (por documento)
+  const usuario = await this.usuarioRepo.buscarPorId(usuarioId);
+  if (!usuario) throw new AppError('Usuario no encontrado.', 404);
+
+  const persona = await this.personaRepo.buscarPorDocumento(usuario.documento_identidad);
+  if (!persona) throw new AppError('Persona no encontrada.', 404);
+
+  // Buscar autoridad activa de esa persona
+  const autoridad = await this.autoridadRepo.buscarActivaPorPersona(persona.id);
+  if (!autoridad) throw new AppError('No tiene una autoridad activa.', 404);
+
+  // ✅ Devolver el objeto mapeado (incluye tiene_certificado)
+  return this._mapear(autoridad);
+}
   _diaAnterior(fechaStr) {
     const fecha = new Date(fechaStr);
     fecha.setDate(fecha.getDate() - 1);

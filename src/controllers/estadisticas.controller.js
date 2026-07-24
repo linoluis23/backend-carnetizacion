@@ -11,4 +11,33 @@ export class EstadisticasController {
       next(error);
     }
   }
+
+    // ✅ NUEVO MÉTODO
+  static async obtenerEstadisticasSolicitudes(req, res, next) {
+    try {
+      const datos = await estadisticasService.obtenerEstadisticasSolicitudes();
+      res.status(200).json({ exito: true, datos });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async obtenerComunidadesPorRegional(req, res, next) {
+  try {
+    const { codReg } = req.params;
+    const datos = await estadisticasService.obtenerComunidadesPorRegional(codReg);
+    res.status(200).json({ exito: true, datos });
+  } catch (error) {
+    next(error);
+  }
+}
+
+static async obtenerTodasRegionales(req, res, next) {
+  try {
+    const datos = await estadisticasService.obtenerTodasRegionales();
+    res.status(200).json({ exito: true, datos });
+  } catch (error) {
+    next(error);
+  }
+}
 }

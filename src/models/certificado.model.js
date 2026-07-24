@@ -1,9 +1,10 @@
+// src/models/certificado.model.js
 export class Certificado {
   constructor({
     id,
     autoridad_id,
     clave_publica,
-    clave_privada_encriptada,
+    clave_privada_encriptada = null, // valor por defecto
     fecha_emision,
     fecha_expiracion,
     estado,

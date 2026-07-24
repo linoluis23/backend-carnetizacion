@@ -21,4 +21,27 @@ export class EstadisticasService {
       ultimos_usuarios: ultimosUsuarios,
     };
   }
+
+    async obtenerEstadisticasSolicitudes() {
+    const [totalesPorEstado, solicitudesPorRegional, personasPorGeografia] =
+      await Promise.all([
+        this.estadisticasRepo.obtenerTotalesPorEstado(),
+        this.estadisticasRepo.obtenerSolicitudesPorRegional(),
+        this.estadisticasRepo.obtenerPersonasPorGeografia(),
+      ]);
+
+    return {
+      totalesPorEstado,
+      solicitudesPorRegional,
+      personasPorGeografia,
+    };
+  }
+
+  async obtenerComunidadesPorRegional(codReg) {
+  return this.estadisticasRepo.obtenerComunidadesPorRegional(codReg);
+}
+
+async obtenerTodasRegionales() {
+  return this.estadisticasRepo.obtenerTodasRegionales();
+}
 }

@@ -1,4 +1,6 @@
 import multer from 'multer';
+import path from 'path';
+
 import { AppError } from '../utils/errores.util.js';
 
 // Almacenamiento en memoria (buffer)
@@ -70,3 +72,17 @@ export const subirExcel = (req, res, next) => {
     next();
   });
 };
+
+
+export const uploadP12 = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  fileFilter: (req, file, cb) => {
+    const ext = file.originalname.split('.').pop().toLowerCase();
+    if (ext === 'p12' || ext === 'pfx') {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten archivos .p12 o .pfx'), false);
+    }
+  },
+});

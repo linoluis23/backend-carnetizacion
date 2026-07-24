@@ -24,7 +24,7 @@ export const autenticarToken = async (req, res, next) => {
     if (usuario.estado_usuario !== 'ACT') {
       return res.status(403).json({ mensaje: 'Cuenta no activa.' });
     }
-    req.usuario = { id: usuario.id, email: usuario.email, nombres: usuario.nombres };
+    req.usuario = { id: usuario.id, email: usuario.email, nombres: usuario.nombres, documento_identidad: usuario.documento_identidad };
     next();
   } catch (error) {
     return res.status(401).json({ mensaje: 'Token inválido o expirado.' });

@@ -56,11 +56,17 @@ static async listar(req, res, next) {
 
   static async registrar(req, res, next) {
     try {
+          console.log('📥 Body recibido:', req.body);
+
       const dto = new ComunidadDTO(req.body);
+          console.log('📥 DTO:', dto);
+
       const usuarioRegistrador = req.usuario.email;
       const resultado = await comunidadService.registrar(dto, usuarioRegistrador);
       res.status(201).json({ exito: true, mensaje: resultado.mensaje, datos: resultado.datos });
     } catch (error) {
+          console.error('❌ Error en registrar:', error);
+
       next(error);
     }
   }

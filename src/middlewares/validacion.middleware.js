@@ -170,9 +170,10 @@ export const validarAsignacionRol = [
 
 export const validarComunidad = [
   body('cod_reg').notEmpty().isInt().withMessage('Código de regional obligatorio.'),
- // body('cod_com').notEmpty().isInt().withMessage('Código de comunidad obligatorio.'),
+  // body('cod_com').notEmpty().isInt().withMessage('Código de comunidad obligatorio.'),
   body('descripcion').notEmpty().isLength({ max: 150 }).withMessage('Descripción obligatoria (máx. 150).'),
-  body('descripcion_corta').notEmpty().isLength({ max: 50 }).withMessage('Descripción corta obligatoria (máx. 50).'),
+  // ✅ Cambiar: descripcion_corta ahora es opcional
+  body('descripcion_corta').optional().isLength({ max: 150 }).withMessage('Descripción corta (máx. 150).'),
   (req, res, next) => {
     const errores = validationResult(req);
     if (!errores.isEmpty()) return res.status(400).json({ errores: errores.array() });
@@ -294,7 +295,8 @@ body('aval_comunidad').notEmpty().isBoolean().withMessage('El aval de la comunid
     body('aval_regional').optional().isBoolean().withMessage('Aval regional debe ser booleano.'),
   body('aval_otros').optional().isBoolean().withMessage('Aval otros debe ser booleano.'),
   body('foto').optional().isString().withMessage('Foto inválida.'),
-  body('fecha_vigencia').optional().isDate().withMessage('Fecha de vigencia inválida.'),
+  //body('fecha_vigencia').optional().isDate().withMessage('Fecha de vigencia inválida.'),
+  body('fecha_vigencia').optional({ nullable: true, checkFalsy: true }).isISO8601().withMessage('Fecha de vigencia inválida.'),
   body('observaciones').optional().isLength({ max: 500 }).withMessage('Máximo 500 caracteres.'),
   (req, res, next) => {
     const errores = validationResult(req);

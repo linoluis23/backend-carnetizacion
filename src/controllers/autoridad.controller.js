@@ -93,4 +93,17 @@ export class AutoridadController {
     next(error);
   }
 }
+
+static async obtenerUsuario(req, res, next) {
+  console.log('🚀 Método obtenerUsuario EJECUTADO');
+  try {
+    const autoridadId = parseInt(req.params.id);
+    console.log('📌 ID de autoridad:', autoridadId);
+    const resultado = await autoridadService.obtenerUsuarioPorAutoridadId(autoridadId);
+    res.status(200).json({ exito: true, datos: resultado });
+  } catch (error) {
+    console.error('❌ Error en obtenerUsuario:', error.message);
+    next(error);
+  }
+}
 }

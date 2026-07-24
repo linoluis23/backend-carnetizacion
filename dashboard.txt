@@ -1,0 +1,421 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '../../hooks/useAuth';
+import { estadisticasService } from '../../services/estadisticas.service';
+
+export function DashboardHome() {
+
+  const { usuario } = useAuth();
+  const [metricas, setMetricas] = useState({
+    usuarios_activos: 0,
+    roles_activos: 0,
+    comunidades_activas: 0,
+  });
+  const [ultimosUsuarios, setUltimosUsuarios] = useState([]);
+  const [estadisticasSolicitudes, setEstadisticasSolicitudes] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const cargarDatos = async () => {
+      try {
+        const [dashboardRes, solicitudesRes] = await Promise.all([
+          estadisticasService.obtenerDashboard(),
+          estadisticasService.obtenerEstadisticasSolicitudes(),
+        ]);
+
+        const dashboardData = dashboardRes.data.datos;
+        setMetricas({
+          usuarios_activos: dashboardData.usuarios_activos,
+          roles_activos: dashboardData.roles_activos,
+          comunidades_activas: dashboardData.comunidades_activas,
+        });
+        setUltimosUsuarios(dashboardData.ultimos_usuarios || []);
+        setEstadisticasSolicitudes(solicitudesRes.data.datos);
+      } catch (err) {
+        setError(err.response?.data?.mensaje || 'Error al cargar estadísticas');
+      } finally {
+        setLoading(false);
+      }
+    };
+    cargarDatos();
+  }, []);
+  /*
+  const { usuario } = useAuth();
+  const [metricas, setMetricas] = useState({
+    usuarios_activos: 0,
+    roles_activos: 0,
+    comunidades_activas: 0,
+  });
+  const [ultimosUsuarios, setUltimosUsuarios] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const cargarEstadisticas = async () => {
+      try {
+        const { data } = await estadisticasService.obtenerDashboard();
+        if (data.datos) {
+          setMetricas({
+            usuarios_activos: data.datos.usuarios_activos,
+            roles_activos: data.datos.roles_activos,
+            comunidades_activas: data.datos.comunidades_activas,
+          });
+          setUltimosUsuarios(data.datos.ultimos_usuarios || []);
+        }
+      } catch (err) {
+        setError(err.response?.data?.mensaje || 'Error al cargar estadísticas');
+      } finally {
+        setLoading(false);
+      }
+    };
+    cargarEstadisticas();
+  }, []);*/
+
+
+
+  const totales = estadisticasSolicitudes?.totalesPorEstado || {};
+  const totalSolicitudes = Object.values(totales).reduce((a, b) => a + b, 0);
+  const totalPersonas = estadisticasSolicitudes?.personasPorGeografia?.filter(p => p.nivel === 'COMUNIDAD')
+    .reduce((sum, p) => sum + p.total_personas, 0) || 0;
+
+/*
+  const tarjetas = [
+    {
+      titulo: 'Usuarios Activos',
+      valor: metricas.usuarios_activos,
+      icono: (
+        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+      ),
+      color: 'from-blue-500 to-blue-600',
+    },
+    {
+      titulo: 'Roles Activos',
+      valor: metricas.roles_activos,
+      icono: (
+        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+      ),
+      color: 'from-emerald-500 to-emerald-600',
+    },
+    {
+      titulo: 'Comunidades Activas',
+      valor: metricas.comunidades_activas,
+      icono: (
+        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+      ),
+      color: 'from-amber-500 to-amber-600',
+    },
+    {
+      titulo: 'Último Acceso',
+      valor: usuario?.ultimo_acceso ? new Date(usuario.ultimo_acceso).toLocaleDateString() : 'N/A',
+      icono: (
+        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      color: 'from-purple-500 to-purple-600',
+      esFecha: true,
+    },
+  ];
+
+  if (loading) return <div className="p-8 text-center text-gray-500">Cargando estadísticas...</div>;
+  if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-800">Panel de Control Ejecutivo</h1>
+        <p className="text-gray-600">Resumen general del sistema</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {tarjetas.map((tarjeta, idx) => (
+          <div
+            key={idx}
+
+
+
+
+
+            className="group relative bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 border-l-4 border-transparent hover:border-red-900 hover:-translate-y-1 cursor-default"
+          >
+            <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${tarjeta.color} opacity-10 rounded-bl-full`}></div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-gray-600 group-hover:text-emerald-700 transition-colors">
+                {tarjeta.icono}
+              </div>
+              <span className="text-3xl font-bold text-gray-800">
+                {tarjeta.valor}
+              </span>
+            </div>
+            <h3 className="text-sm font-medium text-gray-900 uppercase tracking-wider">
+              {tarjeta.titulo}
+            </h3>
+          </div>
+        ))}
+      </div>
+
+     
+      <div className="bg-white rounded-xl shadow-md p-6">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">Últimos Registros</h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fecha Registro</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {ultimosUsuarios.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-4 text-center text-gray-500">No hay registros recientes</td>
+                </tr>
+              ) : (
+                ultimosUsuarios.map((user, idx) => (
+                  <tr key={idx} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-900">
+                      {user.nombres} {user.primer_apellido}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-gray-600">{user.email}</td>
+                    <td className="px-4 py-2 whitespace-nowrap text-gray-500">
+                      {new Date(user.fecha_creacion).toLocaleDateString('es-BO', {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                      })}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+  */
+
+  const tarjetas = [
+    {
+      titulo: 'Usuarios Activos',
+      valor: metricas.usuarios_activos,
+      icono: (
+        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+      ),
+      color: 'from-blue-500 to-blue-600',
+    },
+    {
+      titulo: 'Roles Activos',
+      valor: metricas.roles_activos,
+      icono: (
+        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+      ),
+      color: 'from-emerald-500 to-emerald-600',
+    },
+    {
+      titulo: 'Comunidades Activas',
+      valor: metricas.comunidades_activas,
+      icono: (
+        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+      ),
+      color: 'from-amber-500 to-amber-600',
+    },
+    {
+      titulo: 'Último Acceso',
+      valor: usuario?.ultimo_acceso ? new Date(usuario.ultimo_acceso).toLocaleDateString() : 'N/A',
+      icono: (
+        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      color: 'from-purple-500 to-purple-600',
+    },
+    {
+      titulo: 'Total Personas',
+      valor: totalPersonas,
+      icono: (
+        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      ),
+      color: 'from-teal-500 to-teal-600',
+    },
+    {
+      titulo: 'Solicitudes Totales',
+      valor: totalSolicitudes,
+      icono: (
+        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+        </svg>
+      ),
+      color: 'from-indigo-500 to-indigo-600',
+    },
+  ];
+
+  if (loading) return <div className="p-8 text-center text-gray-500">Cargando estadísticas...</div>;
+  if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-800">Panel de Control Ejecutivo</h1>
+        <p className="text-gray-600">Resumen general del sistema y carnetización</p>
+      </div>
+
+      {/* Tarjetas principales */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {tarjetas.map((tarjeta, idx) => (
+          <div
+            key={idx}
+            className="group relative bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 border-l-4 border-transparent hover:border-red-900 hover:-translate-y-1 cursor-default"
+          >
+            <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${tarjeta.color} opacity-10 rounded-bl-full`}></div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-gray-600 group-hover:text-emerald-700 transition-colors">
+                {tarjeta.icono}
+              </div>
+              <span className="text-3xl font-bold text-gray-800">
+                {tarjeta.valor}
+              </span>
+            </div>
+            <h3 className="text-sm font-medium text-gray-900 uppercase tracking-wider">
+              {tarjeta.titulo}
+            </h3>
+          </div>
+        ))}
+      </div>
+
+      {/* Resumen de estados de solicitudes */}
+      {estadisticasSolicitudes && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+            <p className="text-sm text-yellow-700">Pendientes</p>
+            <p className="text-2xl font-bold text-yellow-800">{totales.PEN || 0}</p>
+          </div>
+          <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+            <p className="text-sm text-green-700">Aprobadas</p>
+            <p className="text-2xl font-bold text-green-800">{totales.APR || 0}</p>
+          </div>
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-700">Emitidas</p>
+            <p className="text-2xl font-bold text-blue-800">{totales.EMI || 0}</p>
+          </div>
+          <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+            <p className="text-sm text-red-700">Rechazadas</p>
+            <p className="text-2xl font-bold text-red-800">{totales.REC || 0}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Tabla de solicitudes por regional */}
+      {estadisticasSolicitudes?.solicitudesPorRegional?.length > 0 && (
+  <div className="bg-white rounded-xl shadow-md p-6 overflow-hidden">
+    <h2 className="text-lg font-semibold text-gray-800 mb-4">Solicitudes por Regional</h2>
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-sm">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Regional</th>
+            <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Personas</th> {/* ✅ NUEVO */}
+            <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Total Solicitudes</th>
+            <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Pendientes</th>
+            <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Aprobadas</th>
+            <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Emitidas</th>
+            <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Rechazadas</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200">
+          {estadisticasSolicitudes.solicitudesPorRegional.map((reg, idx) => (
+            <tr key={idx} className="hover:bg-gray-50">
+              <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-900">{reg.regional}</td>
+              <td className="px-4 py-2 text-center font-medium text-gray-700">{reg.total_personas}</td> {/* ✅ NUEVO */}
+              <td className="px-4 py-2 text-center">{reg.total_solicitudes}</td>
+              <td className="px-4 py-2 text-center text-yellow-600">{reg.pendientes}</td>
+              <td className="px-4 py-2 text-center text-green-600">{reg.aprobadas}</td>
+              <td className="px-4 py-2 text-center text-blue-600">{reg.emitidas}</td>
+              <td className="px-4 py-2 text-center text-red-600">{reg.rechazadas}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
+
+      {/* Tabla de distribución de personas (opcional) */}
+      {estadisticasSolicitudes?.personasPorGeografia?.length > 0 && (
+        <div className="bg-white rounded-xl shadow-md p-6 overflow-hidden">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">Distribución de Personas por Nivel</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nivel</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Personas</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {estadisticasSolicitudes.personasPorGeografia.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-500 uppercase">{item.nivel}</td>
+                    <td className="px-4 py-2 whitespace-nowrap text-gray-900">{item.nombre}</td>
+                    <td className="px-4 py-2 text-right font-medium">{item.total_personas}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Últimos usuarios registrados */}
+      <div className="bg-white rounded-xl shadow-md p-6">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">Últimos Registros</h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fecha Registro</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {ultimosUsuarios.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-4 text-center text-gray-500">No hay registros recientes</td>
+                </tr>
+              ) : (
+                ultimosUsuarios.map((user, idx) => (
+                  <tr key={idx} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-900">
+                      {user.nombres} {user.primer_apellido}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-gray-600">{user.email}</td>
+                    <td className="px-4 py-2 whitespace-nowrap text-gray-500">
+                      {new Date(user.fecha_creacion).toLocaleDateString('es-BO', {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                      })}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
